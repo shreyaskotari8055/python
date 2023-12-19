@@ -22,6 +22,10 @@ class UserUpdate(User):
     dob : Optional[date] = None
     age : int = Field(None, gt=10,lt=100)
 
+def ensure_username_in_db(username):
+       if username not in user_db:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'{username} not found')
+
 app = FastAPI()
 
 @app.get("/users/querry")
@@ -37,31 +41,33 @@ def get_users():
 
 @app.get('/users/{username}')
 def get_users_path(username:str): 
-    if username not in user_db:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f'{username} not found')
+    ensure_username_in_db(username)
     return user_db[username]
 
 @app.post('/user/')
 def create_user(user:User):
     username = user.username
     if username in user_db:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT,detail=f'Cannot create user. Username {username} already existed')
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT,detail=f'Cannot create user. Username {username} already exists')
     user_db[username] = user.model_dump()
     return {'message':f'Successfully created user: {username}'}
 
 @app.delete('/users/{username}')
 def delete_user(username:str):
+    ensure_username_in_db(username)
     del user_db[username]
     return {'message':f'Successfully deleted user: {username}'}
 
 @app.put('/users')
 def update_user(user:User):
     username = user.username
+    ensure_username_in_db(username)
     user_db[username] = user.model_dump()
     return {'message' : f'successfully updated user : {username}'}
 
 @app.patch('/users')
 def upadte_user_partial(user:UserUpdate):
     username = user.username
+    ensure_username_in_db(username)
     user_db[username].update(user.model_dump(exclude_unset=True))   
     return {'message': f'Successfully udated user : {username}'}
